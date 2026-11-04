@@ -1,0 +1,48 @@
+{
+  "features": [
+    "same_host",
+    "same_detector",
+    "same_signature",
+    "gap_le_10s",
+    "gap_le_60s"
+  ],
+  "alpha": 1.0,
+  "beta": 1.0,
+  "class_counts": {
+    "0": 344878,
+    "1": 28771
+  },
+  "feature_ones": {
+    "0": {
+      "same_host": 209318,
+      "same_detector": 256940,
+      "same_signature": 152759,
+      "gap_le_10s": 244369,
+      "gap_le_60s": 289892
+    },
+    "1": {
+      "same_host": 27010,
+      "same_detector": 25512,
+      "same_signature": 13861,
+      "gap_le_10s": 27369,
+      "gap_le_60s": 28047
+    }
+  },
+  "train_scenarios": [
+    "shaw",
+    "wardbeck"
+  ],
+  "label_definition": "Both alerts fall inside labeled attack-phase windows in the same scenario and within the history window (weak pair label; not independent analyst-confirmed linkage).",
+  "max_history": 50,
+  "max_candidates": 5,
+  "max_gap_seconds": 1800,
+  "decision_threshold": 0.04,
+  "threshold_selection": {
+    "threshold": 0.04,
+    "F1": 0.21935335988440868,
+    "precision": 0.12431682580333862,
+    "recall": 0.9313197316742553,
+    "oof_pairs": 373649,
+    "method": "Leave-one-scenario-out predictions within training scenarios; maximize F1 on a fixed 0.01 threshold grid."
+  }
+}

@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local datasets and generated tabular outputs
+data/AIT-ADS/ait_ads.zip
+artifacts/alert_correlation/normalized_alerts.csv
+
+# Presentation material and notebook screenshots
+presentation/
+docs/PRESENTATION_PLAN.md
+
+# Local tooling and operating-system files
+.DS_Store
+Thumbs.db
+.vscode/
