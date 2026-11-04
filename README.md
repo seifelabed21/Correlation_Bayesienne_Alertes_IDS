@@ -1,100 +1,100 @@
-# Bayesian Alert Correlation for Intrusion Detection
+# Corrélation bayésienne d'alertes IDS
 
-An interpretable, reproducible baseline for correlating alerts from multiple intrusion-detection tools. The project uses the [AIT-ADS dataset](https://zenodo.org/records/8263181) to normalize heterogeneous alerts, generate bounded historical candidate pairs, estimate correlation probabilities with a Beta-Bernoulli model, and score incoming alerts in a streaming-style demonstration.
+Prototype interprétable et reproductible de corrélation d'alertes provenant de plusieurs outils de détection d'intrusion. Le projet utilise le jeu de données [AIT-ADS](https://zenodo.org/records/8263181) pour normaliser des alertes hétérogènes, générer des paires candidates à partir de l'historique, estimer leur probabilité de corrélation avec un modèle Beta-Bernoulli et évaluer des alertes en flux.
 
-> **Scope:** This is an exploratory alert-correlation prototype. Its labels are derived from attack-phase time windows in AIT-ADS and do not represent analyst-confirmed links between individual alerts.
+> **Périmètre :** il s'agit d'un prototype exploratoire. Les annotations utilisées sont dérivées de fenêtres temporelles d'attaque et ne représentent pas des liens confirmés par un analyste entre deux alertes.
 
-## 1. Project Overview
+## 1. Présentation du projet
 
-Security monitoring platforms often produce many alerts from different detectors. This project explores whether observable context can help identify alerts that belong to the same attack phase:
+Les plateformes de supervision produisent souvent de nombreuses alertes provenant de détecteurs différents. Ce projet étudie si des caractéristiques temporelles et contextuelles permettent d'identifier les alertes appartenant à une même phase d'attaque :
 
-- normalize alerts from AMiner, Wazuh, and Suricata-related records;
-- preserve time, detector, host, signature, severity, and message context;
-- generate a small, bounded set of historical candidate pairs;
-- learn interpretable feature probabilities with Bayesian updating;
-- select a decision threshold on training scenarios only;
-- score new alerts against recent history.
+- normalisation des alertes AMiner et Wazuh, y compris les événements liés à Suricata ;
+- conservation de l'horodatage, du détecteur, de l'hôte, de la signature, de la sévérité et du message ;
+- génération d'un nombre limité de paires candidates à partir de l'historique ;
+- estimation de probabilités interprétables par mise à jour bayésienne ;
+- sélection d'un seuil de décision sur les scénarios d'entraînement ;
+- calcul d'un score pour de nouvelles alertes à partir de l'historique récent.
 
-The implementation is deliberately lightweight: the model code uses Python's standard library, while Matplotlib is used by the notebooks for visual analysis.
+Le code du modèle utilise uniquement la bibliothèque standard Python. Matplotlib est utilisé par les notebooks pour les visualisations.
 
-## 2. Processing Pipeline
+## 2. Chaîne de traitement
 
 ```text
-AIT-ADS archive + phase labels
-            |
-            v
+Archive AIT-ADS + fenêtres de phases d'attaque
+                  |
+                  v
 1_Preprocessing.ipynb
-  Normalize detector records and attach phase windows
-            |
-            v
+  Normalisation des alertes et association des fenêtres
+                  |
+                  v
 normalized_alerts.csv
-            |
-            v
+                  |
+                  v
 2_Data_Modeling_Validation.ipynb
-  Build candidate pairs, fit Beta-Bernoulli model,
-  select threshold, evaluate on a held-out scenario
-            |
-            v
+  Paires candidates, modèle Beta-Bernoulli,
+  sélection du seuil et validation sur un scénario séparé
+                  |
+                  v
 bayesian_alert_correlation_model.json
 validation_metrics.json
-            |
-            v
+                  |
+                  v
 3_Model_Serving.ipynb
-  Score incoming alerts against recent history
+  Score des nouvelles alertes par rapport à l'historique
 ```
 
-## 3. Dataset
+## 3. Jeu de données
 
-The project uses **AIT-ADS (AIT Alert Dataset)** from [Zenodo](https://zenodo.org/records/8263181).
+Le projet utilise **AIT-ADS (AIT Alert Dataset)**, disponible sur [Zenodo](https://zenodo.org/records/8263181).
 
-Download the archive and place it at:
+Après téléchargement, placer l'archive à l'emplacement suivant :
 
 ```text
 data/AIT-ADS/ait_ads.zip
 ```
 
-The repository includes `data/AIT-ADS/labels.csv` and the dataset documentation, but excludes the large archive from version control. The notebooks use three scenarios:
+Le dépôt contient `data/AIT-ADS/labels.csv` et la documentation du jeu de données, mais exclut l'archive volumineuse du contrôle de version. Les notebooks utilisent trois scénarios :
 
-- `shaw` and `wardbeck` for training and threshold selection;
-- `russellmitchell` as a held-out final demonstration scenario.
+- `shaw` et `wardbeck` pour l'entraînement et la sélection du seuil ;
+- `russellmitchell` comme scénario final tenu à l'écart.
 
-The phase annotations indicate time windows associated with attacks. They do not provide independent, analyst-confirmed relationships between pairs of alerts.
+Les annotations indiquent des fenêtres temporelles associées aux attaques. Elles ne fournissent pas de relations indépendantes et confirmées par un analyste entre les alertes.
 
-## 4. Method
+## 4. Méthode
 
-For each alert, the model compares a bounded recent history and extracts five binary indicators:
+Pour chaque alerte, le modèle compare un historique récent borné et extrait cinq indicateurs binaires :
 
-- same host;
-- same detector;
-- same signature;
-- time gap of at most 10 seconds;
-- time gap of at most 60 seconds.
+- même hôte ;
+- même détecteur ;
+- même signature ;
+- écart temporel inférieur ou égal à 10 secondes ;
+- écart temporel inférieur ou égal à 60 secondes.
 
-The model estimates each feature probability for positive and negative pair classes using a uniform `Beta(1, 1)` prior and a Bernoulli likelihood. Candidate generation is label-independent and bounded to:
+Pour les classes de paires positives et négatives, le modèle estime la probabilité de chaque caractéristique avec un a priori uniforme `Beta(1, 1)` et une vraisemblance de Bernoulli. La génération des candidats ne dépend pas des labels et reste bornée par :
 
-- up to 50 historical alerts;
-- a maximum age of 30 minutes;
-- up to 5 diverse candidates per alert.
+- 50 alertes historiques au maximum ;
+- un âge maximal de 30 minutes ;
+- 5 candidats diversifiés au maximum par alerte.
 
-The current pair label is a weak proxy: both alerts must fall inside an attack-phase window of the same scenario. It should not be interpreted as a confirmed incident relationship.
+Le label d'une paire est un proxy faible : les deux alertes doivent se trouver dans une fenêtre d'attaque du même scénario. Il ne doit pas être interprété comme une relation d'incident confirmée.
 
-## 5. Results
+## 5. Résultats
 
-The committed validation artifact reports the following exploratory results on `russellmitchell`:
+L'artefact de validation versionné fournit les résultats exploratoires suivants sur `russellmitchell` :
 
-| Metric | Value |
+| Mesure | Valeur |
 |---|---:|
-| Decision threshold | 0.04 |
-| Candidate pairs | 102,667 |
-| Precision | 0.337 |
-| Recall | 0.934 |
-| F1 score | 0.495 |
+| Seuil de décision | 0.04 |
+| Paires candidates | 102 667 |
+| Précision | 0.337 |
+| Rappel | 0.934 |
+| Score F1 | 0.495 |
 | Average precision | 0.681 |
 | ROC AUC | 0.680 |
 
-These values measure agreement with the phase-derived proxy labels. They do not measure analyst-confirmed alert-link quality or production detection performance.
+Ces valeurs mesurent l'accord avec le proxy dérivé des phases d'attaque. Elles ne mesurent ni la qualité de liens confirmés par des analystes ni les performances d'un système de détection en production.
 
-## 6. Repository Structure
+## 6. Structure du dépôt
 
 ```text
 .
@@ -107,7 +107,6 @@ These values measure agreement with the phase-derived proxy labels. They do not 
 |       |-- labels.csv
 |       `-- README.md
 |-- docs/
-|   |-- PRESENTATION_PLAN.md
 |   `-- PROJECT_WORKFLOW.md
 |-- notebooks/
 |   |-- 1_Preprocessing.ipynb
@@ -122,16 +121,16 @@ These values measure agreement with the phase-derived proxy labels. They do not 
 `-- requirements.txt
 ```
 
-The presentation directory is intentionally excluded from the public repository. Presentation slides and screenshots are not required to reproduce the pipeline; the notebooks, source code, metrics, and documentation are the project deliverables.
+Les supports de présentation et les captures associées sont volontairement exclus du dépôt public. Ils ne sont pas nécessaires pour reproduire le pipeline ; les notebooks, le code source, les métriques et la documentation constituent les livrables techniques.
 
-## 7. Requirements
+## 7. Prérequis
 
-- Python 3.9 or later;
-- Jupyter Notebook or JupyterLab;
-- the AIT-ADS archive downloaded from Zenodo;
-- dependencies listed in `requirements.txt`.
+- Python 3.9 ou version ultérieure ;
+- Jupyter Notebook ou JupyterLab ;
+- l'archive AIT-ADS téléchargée depuis Zenodo ;
+- les dépendances listées dans `requirements.txt`.
 
-Install the dependencies in a virtual environment:
+Créer un environnement virtuel et installer les dépendances :
 
 ```powershell
 python -m venv .venv
@@ -139,7 +138,7 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-On Linux or macOS:
+Sous Linux ou macOS :
 
 ```bash
 python3 -m venv .venv
@@ -147,48 +146,48 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-## 8. Reproduce the Pipeline
+## 8. Reproduire le pipeline
 
-Start Jupyter from the repository root:
+Lancer Jupyter depuis la racine du dépôt :
 
 ```bash
 jupyter lab
 ```
 
-Run the notebooks in this order:
+Exécuter les notebooks dans l'ordre :
 
 1. `notebooks/1_Preprocessing.ipynb`
 2. `notebooks/2_Data_Modeling_Validation.ipynb`
 3. `notebooks/3_Model_Serving.ipynb`
 
-The first notebook regenerates `artifacts/alert_correlation/normalized_alerts.csv`. This generated CSV is ignored by Git because it can be reproduced from the dataset. The second notebook regenerates the model and validation metrics; the committed JSON files provide a reference run. The third notebook demonstrates online-style scoring against recent alert history.
+Le premier notebook régénère `artifacts/alert_correlation/normalized_alerts.csv`, ignoré par Git car il peut être reconstruit à partir du jeu de données. Le deuxième notebook régénère le modèle et les métriques ; les fichiers JSON versionnés fournissent une exécution de référence. Le troisième notebook illustre le calcul de scores en ligne à partir de l'historique récent.
 
-## 9. Python API
+## 9. API Python
 
-The shared implementation is in [`src/alert_correlation/core.py`](src/alert_correlation/core.py). Key functions include:
+L'implémentation commune se trouve dans [`src/alert_correlation/core.py`](src/alert_correlation/core.py). Les fonctions principales sont :
 
-- `preprocess_ait_ads(...)` for normalization and phase-window attachment;
-- `load_alerts(...)` for reading normalized alerts;
-- `pair_features(...)` for extracting correlation indicators;
-- `iter_candidate_pairs(...)` for bounded candidate generation;
-- `select_history_candidates(...)` for diverse recent-history selection.
+- `preprocess_ait_ads(...)` : normalisation et association des fenêtres de phases ;
+- `load_alerts(...)` : chargement des alertes normalisées ;
+- `pair_features(...)` : extraction des indicateurs de corrélation ;
+- `iter_candidate_pairs(...)` : génération bornée des paires candidates ;
+- `select_history_candidates(...)` : sélection de candidats diversifiés dans l'historique.
 
-The module is dependency-free and can be imported directly from the repository source tree.
+Le module n'a pas de dépendance externe et peut être importé directement depuis la racine du dépôt.
 
-## 10. Limitations and Responsible Interpretation
+## 10. Limites et interprétation
 
-- The project is a research and demonstration baseline, not a production SIEM correlation engine.
-- Labels are weak phase-window labels rather than analyst-confirmed pair relationships.
-- Only three AIT-ADS scenarios are used, with one scenario reserved for the final demonstration.
-- The model assumes conditional independence between binary features given the pair class.
-- The serving notebook uses an in-memory history and does not provide persistence, alert deduplication, or analyst feedback.
-- Results should not be generalized to other environments without additional scenarios and independent ground truth.
+- Le projet est un prototype de recherche et de démonstration, pas un moteur SIEM de production.
+- Les labels sont des labels faibles issus de fenêtres d'attaque, et non des relations confirmées par un analyste.
+- Trois scénarios AIT-ADS seulement sont utilisés, dont un réservé à la démonstration finale.
+- Le modèle suppose l'indépendance conditionnelle des caractéristiques binaires connaissant la classe de la paire.
+- Le notebook de mise en service utilise un historique en mémoire et ne fournit ni persistance, ni déduplication, ni boucle de retour analyste.
+- Les résultats ne doivent pas être généralisés à d'autres environnements sans scénarios supplémentaires et vérité terrain indépendante.
 
-## 11. Reference
+## 11. Référence
 
-Landauer, M., Skopik, F., and Wurzenberger, M. **AIT-ADS: A Dataset for Intrusion Detection and Alert Correlation**. [AIT-ADS on Zenodo](https://zenodo.org/records/8263181).
+Landauer, M., Skopik, F. et Wurzenberger, M. **AIT-ADS: A Dataset for Intrusion Detection and Alert Correlation**. [AIT-ADS sur Zenodo](https://zenodo.org/records/8263181).
 
-## 12. Project Documentation
+## 12. Documentation
 
-- [Project workflow](docs/PROJECT_WORKFLOW.md)
-- [Dataset documentation](data/AIT-ADS/README.md)
+- [Guide du workflow](docs/PROJECT_WORKFLOW.md)
+- [Documentation du jeu de données](data/AIT-ADS/README.md)
